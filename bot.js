@@ -1,9 +1,34 @@
 require("dotenv").config();
 
+const express = require("express");
 const { Telegraf, Markup } = require("telegraf");
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
 const APP_URL = process.env.APP_URL;
+const PORT = process.env.PORT || 3000;
+
+// Render gives your service this URL
+const RENDER_URL = process.env.RENDER_EXTERNAL_URL;
+
+// ==========================================
+// VALIDATE ENVIRONMENT VARIABLES
+// ==========================================
+
+if (!process.env.TELEGRAM_BOT_TOKEN) {
+  console.error("❌ TELEGRAM_BOT_TOKEN is missing from environment variables");
+  process.exit(1);
+}
+
+if (!APP_URL) {
+  console.error("❌ APP_URL is missing from environment variables");
+  process.exit(1);
+}
+
+if (!RENDER_URL) {
+  console.error("❌ RENDER_EXTERNAL_URL is missing from environment variables");
+  process.exit(1);
+}
 
 // ==========================================
 // MAIN START MENU
@@ -27,10 +52,21 @@ async function sendStartMenu(ctx) {
     {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
-        [Markup.button.url("🎲 FIND SOMEONE", `${APP_URL}/chat`)],
         [
-          Markup.button.callback("👀 How it works", "how"),
-          Markup.button.callback("🚀 About", "about"),
+          Markup.button.url(
+            "🎲 FIND SOMEONE",
+            `${APP_URL}/chat`
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "👀 How it works",
+            "how"
+          ),
+          Markup.button.callback(
+            "🚀 About",
+            "about"
+          ),
         ],
       ]),
     }
@@ -63,31 +99,12 @@ bot.command("find", async (ctx) => {
     {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
-        [Markup.button.url("🔥 I'M READY", `${APP_URL}/chat`)],
-      ]),
-    }
-  );
-});
-
-// ==========================================
-// FIND SOMEONE BUTTON
-// ==========================================
-
-bot.action("find", async (ctx) => {
-  await ctx.answerCbQuery();
-
-  await ctx.reply(
-    `🎲 *ALRIGHT, LET'S DO THIS.*\n\n` +
-      `Someone random is waiting for you. 👀\n\n` +
-      `You have no idea who they are.\n` +
-      `They have no idea who you are.\n\n` +
-      `And that's exactly the fun part. 😂🔥\n\n` +
-      `Ready to find out?\n\n` +
-      `*WHO'S NEXT? 👀*`,
-    {
-      parse_mode: "Markdown",
-      ...Markup.inlineKeyboard([
-        [Markup.button.url("🔥 I'M READY", `${APP_URL}/chat`)],
+        [
+          Markup.button.url(
+            "🔥 I'M READY",
+            `${APP_URL}/chat`
+          ),
+        ],
       ]),
     }
   );
@@ -101,7 +118,7 @@ async function sendHowItWorks(ctx) {
   await ctx.reply(
     `👀 *HOW DOES THIS WORK?*\n\n` +
       `It's ridiculously simple:\n\n` +
-      `1️⃣ Tap *Start Chatting*\n` +
+      `1️⃣ Tap *Start Chatting!*\n` +
       `2️⃣ We find you a random person\n` +
       `3️⃣ Start talking 💬\n` +
       `4️⃣ Not your vibe? 😭\n` +
@@ -116,8 +133,18 @@ async function sendHowItWorks(ctx) {
     {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
-        [Markup.button.url("🎲 LET'S TRY", `${APP_URL}/chat`)],
-        [Markup.button.callback("🔙 Back", "back")],
+        [
+          Markup.button.url(
+            "🎲 LET'S TRY",
+            `${APP_URL}/chat`
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "🔙 Back",
+            "back"
+          ),
+        ],
       ]),
     }
   );
@@ -158,8 +185,18 @@ async function sendAbout(ctx) {
     {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
-        [Markup.button.url("🔥 I'M IN", `${APP_URL}/chat`)],
-        [Markup.button.callback("🔙 Back", "back")],
+        [
+          Markup.button.url(
+            "🔥 I'M IN",
+            `${APP_URL}/chat`
+          ),
+        ],
+        [
+          Markup.button.callback(
+            "🔙 Back",
+            "back"
+          ),
+        ],
       ]),
     }
   );
@@ -190,7 +227,12 @@ bot.command("help", async (ctx) => {
     {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
-        [Markup.button.url("🎲 FIND SOMEONE", `${APP_URL}/chat`)],
+        [
+          Markup.button.url(
+            "🎲 FIND SOMEONE",
+            `${APP_URL}/chat`
+          ),
+        ],
       ]),
     }
   );
@@ -215,7 +257,12 @@ bot.on("text", async (ctx) => {
       `Use /start to open the menu or simply hit the button below.`,
     {
       ...Markup.inlineKeyboard([
-        [Markup.button.callback("👀 WHO'S NEXT?", "back")],
+        [
+          Markup.button.callback(
+            "👀 WHO'S NEXT?",
+            "back"
+          ),
+        ],
       ]),
     }
   );
@@ -226,7 +273,10 @@ bot.on("text", async (ctx) => {
 // ==========================================
 
 bot.catch((err, ctx) => {
-  console.error(`❌ Error while handling update ${ctx.update.update_id}:`, err);
+  console.error(
+    `❌ Error while handling update ${ctx.update.update_id}:`,
+    err
+  );
 });
 
 // ==========================================
@@ -261,29 +311,68 @@ async function setupCommands() {
 }
 
 // ==========================================
-// START BOT
+// EXPRESS SERVER
+// ==========================================
+
+const app = express();
+
+app.use(express.json());
+
+// Health check
+app.get("/", (req, res) => {
+  res.status(200).send("🤖 Who's Next Telegram Bot is alive!");
+});
+
+// Telegram webhook endpoint
+app.post("/telegram-webhook", async (req, res) => {
+  try {
+    await bot.handleUpdate(req.body);
+
+    res.sendStatus(200);
+  } catch (error) {
+    console.error("❌ Webhook error:", error);
+
+    res.sendStatus(500);
+  }
+});
+
+// ==========================================
+// START SERVER + WEBHOOK
 // ==========================================
 
 async function startBot() {
   try {
-    if (!process.env.TELEGRAM_BOT_TOKEN) {
-      throw new Error("TELEGRAM_BOT_TOKEN is missing from .env");
-    }
+    // Start Express
+    app.listen(PORT, "0.0.0.0", async () => {
+      console.log("=================================");
+      console.log("🤖 Who's Next Telegram Bot");
+      console.log(`🌐 Server running on port ${PORT}`);
+      console.log("=================================");
+    });
 
-    if (!process.env.APP_URL) {
-      throw new Error("APP_URL is missing from .env");
-    }
-
+    // Setup Telegram commands
     await setupCommands();
 
-    await bot.launch();
+    // Webhook URL
+    const webhookURL = `${RENDER_URL}/telegram-webhook`;
+
+    // Remove any previous webhook
+    await bot.telegram.deleteWebhook();
+
+    // Register new webhook
+    await bot.telegram.setWebhook(webhookURL);
 
     console.log("=================================");
-    console.log("🤖 Who's Next Telegram Bot");
-    console.log("🚀 Bot is running successfully");
+    console.log("✅ Telegram webhook configured");
+    console.log(`🔗 ${webhookURL}`);
+    console.log("🚀 Bot is ready!");
     console.log("=================================");
+
   } catch (error) {
-    console.error("❌ Failed to start bot:", error);
+    console.error(
+      "❌ Failed to start bot:",
+      error
+    );
 
     process.exit(1);
   }
